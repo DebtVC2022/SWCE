@@ -8,7 +8,7 @@ import torchvision.datasets as datasets
 
 from random import choice
 
-device = "cpu"
+device = "cuda:0"
 
 class CustomLoss(nn.Module):
     
@@ -115,10 +115,16 @@ for noisy_ratio in noisy_ratio_list:
                 change_indices_train = np.random.choice(len(labels_np), num_samples_to_change_train, replace=False)
                 labels_changed = labels_np.clone()
 
-                for each in labels_np[change_indices_train]:
-                    result_list = list(range(0, num_classes))
-                    result_list.remove(each)
-                    labels_changed[change_indices_train] = choice(result_list)
+                candidates = {
+                    0: [1],
+                    1: [0]
+                }
+                
+                random_labels = torch.tensor(
+                    [choice(candidates[label.item()]) for label in labels_np[change_indices_train]], 
+                    device=labels_np.device
+                )
+                labels_changed[change_indices_train] = random_labels.long()
                 
                 outputs = model(images)
                 loss = criterion(outputs, labels_changed)
@@ -149,10 +155,16 @@ for noisy_ratio in noisy_ratio_list:
                         change_indices_testlabels = np.random.choice(len(testlabels_np), num_samples_to_change_testlabels, replace=False)
                         testlabels_changed = testlabels_np.clone()
 
-                        for eachtest in testlabels_np[change_indices_testlabels]:
-                            result_list = list(range(0, num_classes))
-                            result_list.remove(eachtest)
-                            testlabels_changed[change_indices_testlabels] = choice(result_list)
+                        test_candidates = {
+                            0: [1],
+                            1: [0]
+                        }
+                        
+                        random_labels = torch.tensor(
+                            [choice(test_candidates[label.item()]) for label in testlabels_np[change_indices_testlabels]], 
+                            device=testlabels_np.device
+                        )
+                        testlabels_changed[change_indices_testlabels] = random_labels.long()
 
                         correct_noisy += (predicted == testlabels_changed).sum().item()
                     
